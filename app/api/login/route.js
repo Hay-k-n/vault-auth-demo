@@ -1,28 +1,21 @@
-import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-
-// Hardcoded demo credentials
-const DEMO_EMAIL = 'demo@example.com';
-const DEMO_PASSWORD = 'password123';
-const SESSION_TOKEN = 'demo-session-token-abc123';
+import { supabase } from '@/lib/supabase'
+import { cookies } from 'next/headers'
 
 export async function POST(request) {
-  const { email, password } = await request.json();
+  const { email, password } = await request.json()
 
-  if (email === DEMO_EMAIL && password === DEMO_PASSWORD) {
-    const cookieStore = await cookies();
-    cookieStore.set('session', SESSION_TOKEN, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24, // 24 hours
-      path: '/',
-    });
-    return NextResponse.json({ success: true });
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('email', email)
+    .eq('password', password)
+    .single()
+
+  if (data && !error) {
+    const cookieStore = await cookies()
+    cookieStore.set('session', 'true', { httpOnly: true })
+    return new Response(JSON.stringify({ success: true }), { status: 200 })
   }
 
-  return NextResponse.json(
-    { message: 'Invalid email or password' },
-    { status: 401 }
-  );
+  return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401 })
 }
